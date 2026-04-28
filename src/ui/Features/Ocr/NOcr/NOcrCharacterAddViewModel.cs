@@ -282,8 +282,29 @@ public partial class NOcrCharacterAddViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Ok()
+    private async Task Ok()
     {
+        if (string.IsNullOrEmpty(NewText) && Se.Settings.Ocr.PromptForBlankOcrText)
+        {
+            var answer = await MessageBox.Show(
+                Window!,
+                Se.Language.Ocr.SaveBlankTextTitle,
+                Se.Language.Ocr.SaveBlankTextPrompt,
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question,
+                custom1: Se.Language.Ocr.YesAndNeverAskAgain);
+
+            if (answer == MessageBoxResult.No || answer == MessageBoxResult.None)
+            {
+                return;
+            }
+
+            if (answer == MessageBoxResult.Custom1)
+            {
+                Se.Settings.Ocr.PromptForBlankOcrText = false;
+            }
+        }
+
         NOcrChar.Text = NewText;
         NOcrChar.Italic = IsNewTextItalic;
         OkPressed = true;
@@ -427,7 +448,7 @@ public partial class NOcrCharacterAddViewModel : ObservableObject
         if (e.Key == Key.Enter && !string.IsNullOrWhiteSpace(TextBoxNew.Text))
         {
             e.Handled = true;
-            Ok();
+            _ = Ok();
         }
     }
 
@@ -436,7 +457,7 @@ public partial class NOcrCharacterAddViewModel : ObservableObject
         if (SubmitOnFirstLetter && NewText.Length >= 1)
         {
             e.Handled = true;
-            Ok();
+            _ = Ok();
         }
     }
 

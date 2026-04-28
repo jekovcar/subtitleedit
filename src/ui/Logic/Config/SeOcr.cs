@@ -22,6 +22,7 @@ public class SeOcr
     public string MistralApiKey { get; set; }
     public bool IsNewLetterItalic { get; set; }
     public bool SubmitOnFirstLetter { get; set; }
+    public bool PromptForBlankOcrText { get; set; }
     public int NOcrNoOfLinesToAutoDraw { get; set; }
     public int NOcrZoomFactor { get; set; }
     public string PaddleOcrMode { get; set; }
@@ -81,5 +82,7 @@ public class SeOcr
         UseWordSplitList = true;
 
         CaptureAssaPosition = false;
+
+        PromptForBlankOcrText = true;
     }
 }

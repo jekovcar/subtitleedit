@@ -73,6 +73,9 @@ public class LanguageOcr
     public string DownloadingPaddleOcrModelsDotDotDot { get; set; }
     public string PaddleOcr { get; set; }
     public string BinaryImageCompareInspectImageMatches { get; set; }
+    public string SaveBlankTextTitle { get; set; }
+    public string SaveBlankTextPrompt { get; set; }
+    public string YesAndNeverAskAgain { get; set; }
 
     public LanguageOcr()
     {
@@ -145,5 +148,8 @@ public class LanguageOcr
         DownloadingPaddleOcrModelsDotDotDot = "Downloading Paddle OCR models...";
         PaddleOcr = "Paddle OCR";
         BinaryImageCompareInspectImageMatches = "\"Binary image compare\" - Inspect image matches";
+        SaveBlankTextTitle = "Save blank text?";
+        SaveBlankTextPrompt = "Save blank text for image?";
+        YesAndNeverAskAgain = "Yes and never ask again";
     }
 }
