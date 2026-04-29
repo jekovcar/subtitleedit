@@ -28,7 +28,7 @@ public class PreProcessingWindow : Window
             Margin = new Thickness(0, 0, 55, 0),
             [!CheckBox.IsCheckedProperty] = new Binding(nameof(vm.CropTransparentColors)) { Mode = BindingMode.TwoWay },
         };
-        checkBoxCropTransparent.IsCheckedChanged += (s, e) => vm.RequestPreviewUpdate(); 
+        checkBoxCropTransparent.IsCheckedChanged += (s, e) => vm.RequestPreviewUpdate();
 
         var checkBoxInverseColors = new CheckBox
         {
@@ -119,16 +119,16 @@ public class PreProcessingWindow : Window
         };
 
         grid.Add(checkBoxCropTransparent, 0);
-        grid.Add(checkBoxInverseColors, 0,1);
-        grid.Add(checkBoxBinarize, 0,2);
+        grid.Add(checkBoxInverseColors, 0, 1);
+        grid.Add(checkBoxBinarize, 0, 2);
 
         grid.Add(UiUtil.MakeBorderForControl(panelOneColor), 1, 0, 1, 3);
 
         grid.Add(UiUtil.MakeBorderForControl(panelRemoveBorders), 2, 0, 1, 3);
-        
-        grid.Add(MakeOriginalImageView(vm), 3, 0,1, 3 );
+
+        grid.Add(MakeOriginalImageView(vm), 3, 0, 1, 3);
         grid.Add(MakePostProcessedImageView(vm), 4, 0, 1, 3);
-        grid.Add(panelButtons, 5, 0,1,3);
+        grid.Add(panelButtons, 5, 0, 1, 3);
 
         Content = grid;
 
