@@ -16,11 +16,15 @@ Subtitle Edit 5 is the Avalonia-based, cross-platform version of Subtitle Edit. 
 
 - Deleting many lines at once in the subtitle grid / list view is dramatically faster.
 - New **Tools → Change formatting** dialog for adding or removing italic, bold, underline, and other formatting across selected lines.
+- **Show formatting in grid** — formatting tags (italic, bold, color, etc.) are now rendered visually in the subtitle grid.
 
 ## Video
 
 - New **Video → Re-encode** tool that re-encodes a video into a format better suited for subtitling work.
 - New **Video → Cut video** tool for trimming video segments directly from Subtitle Edit.
+- **Video → Burn-in with logo** — a logo/watermark image can now be included when burning subtitles into video.
+- **Whisper CTranslate2** engine added for speech-to-text transcription.
+- Improved reading of subtitles embedded in MP4 files.
 
 ## Sync
 
@@ -28,21 +32,17 @@ Subtitle Edit 5 is the Avalonia-based, cross-platform version of Subtitle Edit. 
 
 ## Waveform and Spectrogram
 
-- Waveform toolbar visibility can be toggled from the Video menu.
 - Waveform toolbar buttons can be customized, sorted, imported, and exported.
 - Waveform themes can be imported and exported.
-- Spectrogram display can be generated and combined with the waveform view.
 - **Spectrogram style** can be changed at runtime — no re-generation needed.
-- More and fancier waveform styles to choose from.
 - More customization options for the waveform and spectrogram, including colors, shot-change colors, and visual style.
 
 ## Speech to Text
 
 Speech recognition is no longer limited to classic Whisper workflows. Subtitle Edit 5 includes a broader set of local and downloadable engines:
 
-- Whisper.cpp, cuBLAS, Vulkan, CTranslate2, Const-me's Whisper, OpenAI Whisper, and Purfview Faster-Whisper XXL.
+- Purfview Faster-Whisper XXL, CTranslate2, Whisper.cpp, OpenAI Whisper, and Const-me's Whisper.
 - Qwen3 ASR with multiple GGUF model sizes.
-- Parakeet.cpp models.
 - Crisp ASR variants including GLM, Qwen3, Granite, Omni, Parakeet, Canary, Cohere, and Fire Red.
 - Per-engine advanced parameters and batch transcription improvements.
 - Automatic language selection for several newer engines.
@@ -63,10 +63,8 @@ See [Text to Speech](text-to-speech.md) for details.
 
 ## OCR and Batch Conversion
 
-- nOCR and Binary OCR have improved matching and database workflows.
 - Batch Convert can use Binary OCR and can auto-detect several nOCR/Binary OCR settings.
 - PaddleOCR, Ollama OCR, Mistral OCR, Google Lens, Google Vision, and Llama.cpp OCR are available in the OCR workflow.
-- The command-line converter `seconv` can run subtitle conversion and OCR without the GUI.
 
 See [OCR](ocr.md), [Batch Convert](batch-convert.md), and [Command Line (seconv)](../reference/command-line.md).
 
@@ -74,6 +72,11 @@ See [OCR](ocr.md), [Batch Convert](batch-convert.md), and [Command Line (seconv)
 
 - New **Apply advanced effects** tool that generates cinematic and creative ASSA override-tag animations (typewriter, karaoke, bounce-in, neon, glitch, rainbow, starfield, rain, snow, fireflies, and more) with real-time video preview.
 - **Hide layer** — individual ASSA layers can now be hidden in the preview to focus on the lines you are working on.
+- **ASSA filtering** — filter and search lines in the ASSA grid by style, actor, layer, or tag content.
+
+## Subtitle Formats
+
+- Added **IMSC-Rosetta Timed Text** subtitle format support.
 
 ## Where to Look Next
 
