@@ -179,8 +179,8 @@ public class NOcrDb
                 IsExpandedLineMatch(oc, targetItem, nikseBitmap, scaled: true))
             {
                 var size = GetTotalSize(listIndex, list, oc.ExpandCount);
-                var widthPercent = size.Y * 100.0 / size.X;
-                if (Math.Abs(widthPercent - oc.WidthPercent) < 15 &&
+                var heightToWidthPercent = size.Y * 100.0 / size.X;
+                if (Math.Abs(heightToWidthPercent - oc.HeightToWidthPercent) < 15 &&
                     Math.Abs(size.X - oc.Width) < 25 && Math.Abs(size.Y - oc.Height) < 20)
                 {
                     return oc;
@@ -325,114 +325,162 @@ public class NOcrDb
 
     public NOcrChar? GetMatchSingle(NikseBitmap2 bitmap, int topMargin, bool deepSeek, int maxWrongPixels)
     {
-        // only very very accurate matches
         var exact = GetExactMatchSingle(bitmap, topMargin);
         if (exact != null)
         {
             return exact;
         }
 
-        // only very accurate matches
-        var widthPercent = bitmap.Height * 100.0 / bitmap.Width;
-        foreach (var oc in OcrCharacters)
+        var heightToWidthPercent = bitmap.Height * 100.0 / bitmap.Width;
+
+        foreach (var pass in MatchPasses)
         {
-            if (Math.Abs(widthPercent - oc.WidthPercent) < 15 && Math.Abs(bitmap.Width - oc.Width) < 5 && Math.Abs(bitmap.Height - oc.Height) < 5 && Math.Abs(oc.MarginTop - topMargin) < 5)
+            if (pass.RequireDeepSeek && !deepSeek)
             {
-                if (IsMatch(bitmap, oc, 0))
+                continue;
+            }
+
+            if (maxWrongPixels < pass.MinAllowance)
+            {
+                continue;
+            }
+
+            var errorsAllowed = pass.ErrorsAllowed(maxWrongPixels);
+
+            foreach (var oc in OcrCharacters)
+            {
+                if (!PassFilter(bitmap, heightToWidthPercent, oc, topMargin, pass))
+                {
+                    continue;
+                }
+
+                if (IsMatch(bitmap, oc, errorsAllowed))
                 {
                     return oc;
                 }
             }
         }
 
-        if (maxWrongPixels >= 1)
-        {
-            foreach (var oc in OcrCharacters)
-            {
-                if (Math.Abs(bitmap.Width - oc.Width) < 4 && Math.Abs(bitmap.Height - oc.Height) < 4 && Math.Abs(oc.MarginTop - topMargin) < 8)
-                {
-                    if (IsMatch(bitmap, oc, 1))
-                    {
-                        return oc;
-                    }
-                }
-            }
-        }
-
-        if (maxWrongPixels >= 1)
-        {
-            foreach (var oc in OcrCharacters)
-            {
-                if (Math.Abs(bitmap.Width - oc.Width) < 8 && Math.Abs(bitmap.Height - oc.Height) < 8 && Math.Abs(oc.MarginTop - topMargin) < 8)
-                {
-                    if (IsMatch(bitmap, oc, 1))
-                    {
-                        return oc;
-                    }
-                }
-            }
-        }
-
-        if (maxWrongPixels >= 2)
-        {
-            var errorsAllowed = Math.Min(3, maxWrongPixels);
-            foreach (var oc in OcrCharacters)
-            {
-                if (Math.Abs(widthPercent - oc.WidthPercent) < 20 && Math.Abs(oc.MarginTop - topMargin) < 15)
-                {
-                    if (IsMatch(bitmap, oc, errorsAllowed))
-                    {
-                        return oc;
-                    }
-                }
-            }
-        }
-
-        if (maxWrongPixels >= 10)
-        {
-            var errorsAllowed = Math.Min(20, maxWrongPixels);
-            foreach (var oc in OcrCharacters)
-            {
-                if (!oc.IsSensitive && Math.Abs(widthPercent - oc.WidthPercent) < 20 && Math.Abs(oc.MarginTop - topMargin) < 15 && oc.LinesForeground.Count + oc.LinesBackground.Count > 40)
-                {
-                    if (IsMatch(bitmap, oc, errorsAllowed))
-                    {
-                        return oc;
-                    }
-                }
-            }
-        }
-
-        if (maxWrongPixels >= 10)
-        {
-            foreach (var oc in OcrCharacters)
-            {
-                if (oc.IsSensitive && Math.Abs(widthPercent - oc.WidthPercent) < 30 && Math.Abs(oc.MarginTop - topMargin) < 15 && oc.LinesForeground.Count + oc.LinesBackground.Count > 40)
-                {
-                    if (IsMatch(bitmap, oc, 10))
-                    {
-                        return oc;
-                    }
-                }
-            }
-        }
-
-        if (deepSeek)
-        {
-            foreach (var oc in OcrCharacters)
-            {
-                if (Math.Abs(widthPercent - oc.WidthPercent) < 60 && Math.Abs(oc.MarginTop - topMargin) < 17 && oc.LinesForeground.Count + oc.LinesBackground.Count > 50)
-                {
-                    if (IsMatch(bitmap, oc, maxWrongPixels))
-                    {
-                        return oc;
-                    }
-                }
-            }
-        }
-
         return null;
     }
+
+    private static bool PassFilter(NikseBitmap2 bitmap, double heightToWidthPercent, NOcrChar oc, int topMargin, in MatchPass pass)
+    {
+        if (pass.AspectMaxDelta != int.MaxValue &&
+            Math.Abs(heightToWidthPercent - oc.HeightToWidthPercent) >= pass.AspectMaxDelta)
+        {
+            return false;
+        }
+
+        if (pass.SizeMaxDelta != int.MaxValue &&
+            (Math.Abs(bitmap.Width - oc.Width) >= pass.SizeMaxDelta ||
+             Math.Abs(bitmap.Height - oc.Height) >= pass.SizeMaxDelta))
+        {
+            return false;
+        }
+
+        if (Math.Abs(oc.MarginTop - topMargin) >= pass.MarginTopMaxDelta)
+        {
+            return false;
+        }
+
+        if (pass.MinLineCount > 0 &&
+            oc.LinesForeground.Count + oc.LinesBackground.Count < pass.MinLineCount)
+        {
+            return false;
+        }
+
+        return pass.Sensitivity switch
+        {
+            SensitivityFilter.OnlySensitive => oc.IsSensitive,
+            SensitivityFilter.NotSensitive => !oc.IsSensitive,
+            _ => true,
+        };
+    }
+
+    private enum SensitivityFilter { Either, NotSensitive, OnlySensitive }
+
+    /// <summary>
+    /// One row in the match cascade run by <see cref="GetMatchSingle"/>. Earlier rows are stricter
+    /// and run first; the function returns the first <see cref="NOcrChar"/> any row accepts.
+    /// </summary>
+    /// <remarks>
+    /// Conditions are "fail if &gt;= delta" (equivalent to the original "&lt; delta" pass condition).
+    /// Use <see cref="int.MaxValue"/> to disable a delta check entirely.
+    /// </remarks>
+    private readonly struct MatchPass
+    {
+        public int MinAllowance { get; init; }       // run only if maxWrongPixels >= this (0 = always)
+        public bool RequireDeepSeek { get; init; }
+        public int AspectMaxDelta { get; init; }     // int.MaxValue = no aspect-ratio check
+        public int SizeMaxDelta { get; init; }       // int.MaxValue = no width/height check; otherwise applied to both
+        public int MarginTopMaxDelta { get; init; }
+        public int MinLineCount { get; init; }       // 0 = no line-count check
+        public SensitivityFilter Sensitivity { get; init; }
+        public Func<int, int> ErrorsAllowed { get; init; }
+    }
+
+    private static readonly Func<int, int> ErrorsZero = _ => 0;
+    private static readonly Func<int, int> ErrorsOne = _ => 1;
+    private static readonly Func<int, int> ErrorsTen = _ => 10;
+    private static readonly Func<int, int> ErrorsCappedAtThree = max => Math.Min(3, max);
+    private static readonly Func<int, int> ErrorsCappedAtTwenty = max => Math.Min(20, max);
+    private static readonly Func<int, int> ErrorsAsRequested = max => max;
+
+    private static readonly MatchPass[] MatchPasses =
+    {
+        // very accurate (size + aspect, 0 errors)
+        new MatchPass
+        {
+            AspectMaxDelta = 15, SizeMaxDelta = 5, MarginTopMaxDelta = 5,
+            ErrorsAllowed = ErrorsZero,
+        },
+        // 4-px size tolerance, 1 error
+        new MatchPass
+        {
+            MinAllowance = 1,
+            AspectMaxDelta = int.MaxValue, SizeMaxDelta = 4, MarginTopMaxDelta = 8,
+            ErrorsAllowed = ErrorsOne,
+        },
+        // 8-px size tolerance, 1 error
+        new MatchPass
+        {
+            MinAllowance = 1,
+            AspectMaxDelta = int.MaxValue, SizeMaxDelta = 8, MarginTopMaxDelta = 8,
+            ErrorsAllowed = ErrorsOne,
+        },
+        // aspect-only screen, errors capped at 3
+        new MatchPass
+        {
+            MinAllowance = 2,
+            AspectMaxDelta = 20, SizeMaxDelta = int.MaxValue, MarginTopMaxDelta = 15,
+            ErrorsAllowed = ErrorsCappedAtThree,
+        },
+        // wide tolerance for not-sensitive chars, requires many lines, errors capped at 20
+        new MatchPass
+        {
+            MinAllowance = 10,
+            AspectMaxDelta = 20, SizeMaxDelta = int.MaxValue, MarginTopMaxDelta = 15,
+            MinLineCount = 41, Sensitivity = SensitivityFilter.NotSensitive,
+            ErrorsAllowed = ErrorsCappedAtTwenty,
+        },
+        // looser aspect for sensitive chars (O, o, 0, ...), 10 errors
+        new MatchPass
+        {
+            MinAllowance = 10,
+            AspectMaxDelta = 30, SizeMaxDelta = int.MaxValue, MarginTopMaxDelta = 15,
+            MinLineCount = 41, Sensitivity = SensitivityFilter.OnlySensitive,
+            ErrorsAllowed = ErrorsTen,
+        },
+        // deepSeek: very wide aspect, requires lots of lines, errors as requested
+        new MatchPass
+        {
+            RequireDeepSeek = true,
+            AspectMaxDelta = 60, SizeMaxDelta = int.MaxValue, MarginTopMaxDelta = 17,
+            MinLineCount = 51,
+            ErrorsAllowed = ErrorsAsRequested,
+        },
+    };
 
     public static NOcrChar MakeItalicNOcrChar(NOcrChar oldChar, int movePixelsLeft, double unItalicFactor)
     {

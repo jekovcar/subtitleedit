@@ -13,7 +13,12 @@ public class NOcrChar
     public bool LoadedOk { get; }
     public ImageSplitterItem2? ImageSplitterItem { get; set; }
 
-    public double WidthPercent => Height * 100.0 / Width;
+    /// <summary>
+    /// Height expressed as a percentage of width (i.e. <c>Height * 100 / Width</c>).
+    /// Square = 100, wider-than-tall &lt; 100, taller-than-wide &gt; 100. Used by the
+    /// matcher as a coarse aspect-ratio screen before pixel-level checks.
+    /// </summary>
+    public double HeightToWidthPercent => Height * 100.0 / Width;
 
     public NOcrChar()
     {
@@ -341,7 +346,7 @@ public class NOcrChar
     internal static void GenerateLineSegmentsRandom(int maxNumberOfLines, bool veryPrecise, NOcrChar nOcrChar, NikseBitmap2 bitmap)
     {
         const int giveUpCount = 15_000;
-        var r = new Random();
+        var r = Random.Shared;
 
         GenerateLines(
             maxNumberOfLines, veryPrecise, giveUpCount, nOcrChar, bitmap, r,
@@ -516,67 +521,39 @@ public class NOcrChar
 
         foreach (var point in op.ScaledGetPoints(nOcrChar, nbmp.Width, nbmp.Height))
         {
-            if (point.X >= 0 && point.Y >= 0 && point.X < nbmp.Width && point.Y < nbmp.Height)
+            if (point.X < 0 || point.Y < 0 || point.X >= nbmp.Width || point.Y >= nbmp.Height)
             {
-                var c = nbmp.GetPixel(point.X, point.Y);
-                if (c.Alpha > 150)
-                {
-                }
-                else
-                {
-                    return false;
-                }
+                continue;
+            }
 
-                if (loose)
-                {
-                    if (nbmp.Width > 10 && point.X + 1 < nbmp.Width)
-                    {
-                        c = nbmp.GetPixel(point.X + 1, point.Y);
-                        if (c.Alpha > 150)
-                        {
-                        }
-                        else
-                        {
-                            return false;
-                        }
-                    }
+            if (nbmp.GetPixel(point.X, point.Y).Alpha <= 150)
+            {
+                return false;
+            }
 
-                    if (nbmp.Width > 10 && point.X >= 1)
-                    {
-                        c = nbmp.GetPixel(point.X - 1, point.Y);
-                        if (c.Alpha > 150)
-                        {
-                        }
-                        else
-                        {
-                            return false;
-                        }
-                    }
+            if (!loose)
+            {
+                continue;
+            }
 
-                    if (nbmp.Height > 10 && point.Y + 1 < nbmp.Height)
-                    {
-                        c = nbmp.GetPixel(point.X, point.Y + 1);
-                        if (c.Alpha > 150)
-                        {
-                        }
-                        else
-                        {
-                            return false;
-                        }
-                    }
+            if (nbmp.Width > 10 && point.X + 1 < nbmp.Width && nbmp.GetPixel(point.X + 1, point.Y).Alpha <= 150)
+            {
+                return false;
+            }
 
-                    if (nbmp.Height > 10 && point.Y >= 1)
-                    {
-                        c = nbmp.GetPixel(point.X, point.Y - 1);
-                        if (c.Alpha > 150)
-                        {
-                        }
-                        else
-                        {
-                            return false;
-                        }
-                    }
-                }
+            if (nbmp.Width > 10 && point.X >= 1 && nbmp.GetPixel(point.X - 1, point.Y).Alpha <= 150)
+            {
+                return false;
+            }
+
+            if (nbmp.Height > 10 && point.Y + 1 < nbmp.Height && nbmp.GetPixel(point.X, point.Y + 1).Alpha <= 150)
+            {
+                return false;
+            }
+
+            if (nbmp.Height > 10 && point.Y >= 1 && nbmp.GetPixel(point.X, point.Y - 1).Alpha <= 150)
+            {
+                return false;
             }
         }
 
@@ -587,52 +564,42 @@ public class NOcrChar
     {
         foreach (var point in op.ScaledGetPoints(nOcrChar, nbmp.Width, nbmp.Height))
         {
-            if (point.X >= 0 && point.Y >= 0 && point.X < nbmp.Width && point.Y < nbmp.Height)
+            if (point.X < 0 || point.Y < 0 || point.X >= nbmp.Width || point.Y >= nbmp.Height)
             {
-                var c = nbmp.GetPixel(point.X, point.Y);
-                if (c.Alpha > 150)
-                {
-                    return false;
-                }
+                continue;
+            }
 
-                if (nbmp.Width > 10 && point.X + 1 < nbmp.Width)
-                {
-                    c = nbmp.GetPixel(point.X + 1, point.Y);
-                    if (c.Alpha > 150)
-                    {
-                        return false;
-                    }
-                }
+            if (nbmp.GetPixel(point.X, point.Y).Alpha > 150)
+            {
+                return false;
+            }
 
-                if (loose)
-                {
-                    if (nbmp.Width > 10 && point.X >= 1)
-                    {
-                        c = nbmp.GetPixel(point.X - 1, point.Y);
-                        if (c.Alpha > 150)
-                        {
-                            return false;
-                        }
-                    }
+            if (!loose)
+            {
+                continue;
+            }
 
-                    if (nbmp.Height > 10 && point.Y + 1 < nbmp.Height)
-                    {
-                        c = nbmp.GetPixel(point.X, point.Y + 1);
-                        if (c.Alpha > 150)
-                        {
-                            return false;
-                        }
-                    }
+            // All four neighbors are gated on `loose` so the function is symmetric;
+            // previously the x+1 neighbor was checked unconditionally, which rejected
+            // BG lines running just to the right of a stroke even in non-loose mode.
+            if (nbmp.Width > 10 && point.X + 1 < nbmp.Width && nbmp.GetPixel(point.X + 1, point.Y).Alpha > 150)
+            {
+                return false;
+            }
 
-                    if (nbmp.Height > 10 && point.Y >= 1)
-                    {
-                        c = nbmp.GetPixel(point.X, point.Y - 1);
-                        if (c.Alpha > 150)
-                        {
-                            return false;
-                        }
-                    }
-                }
+            if (nbmp.Width > 10 && point.X >= 1 && nbmp.GetPixel(point.X - 1, point.Y).Alpha > 150)
+            {
+                return false;
+            }
+
+            if (nbmp.Height > 10 && point.Y + 1 < nbmp.Height && nbmp.GetPixel(point.X, point.Y + 1).Alpha > 150)
+            {
+                return false;
+            }
+
+            if (nbmp.Height > 10 && point.Y >= 1 && nbmp.GetPixel(point.X, point.Y - 1).Alpha > 150)
+            {
+                return false;
             }
         }
         return true;
