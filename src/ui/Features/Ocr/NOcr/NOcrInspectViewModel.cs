@@ -310,25 +310,47 @@ public partial class NOcrInspectViewModel : ObservableObject
 
     private void ReloadMatches()
     {
-        for (var i = 0; i < _letters.Count; i++)
+        var index = 0;
+        while (index < _letters.Count)
         {
-            if (_letters[i].NikseBitmap == null)
+            if (_letters[index].NikseBitmap == null)
             {
+                index++;
                 continue;
             }
 
-            _matches[i] = _nOcrDb.GetMatch(
+            var match = _nOcrDb.GetMatch(
                 _nBmp,
                 _letters,
-                _letters[i],
-                _letters[i].Top,
-                false,
+                _letters[index],
+                _letters[index].Top,
+                true,
                 _maxWrongPixels);
+
+            _matches[index] = match;
+
+            if (match is { ExpandCount: > 1 })
+            {
+                // Expanded match consumes the next ExpandCount-1 letters.
+                // Use the same reference for consumed slots so OnLoaded can detect and skip them.
+                for (var j = 1; j < match.ExpandCount && index + j < _matches.Count; j++)
+                {
+                    _matches[index + j] = match;
+                }
+                index += match.ExpandCount;
+            }
+            else
+            {
+                index++;
+            }
         }
 
         PanelLines.Children.Clear();
         OnLoaded();
-        OnLetterClicked(LetterIndex, _matches[LetterIndex]);
+        if (LetterIndex >= 0 && LetterIndex < _matches.Count)
+        {
+            OnLetterClicked(LetterIndex, _matches[LetterIndex]);
+        }
     }
 
     [RelayCommand]
@@ -449,6 +471,13 @@ public partial class NOcrInspectViewModel : ObservableObject
         for (var i = 0; i < _matches.Count; i++)
         {
             NOcrChar? match = _matches[i];
+
+            // Skip continuation slots for an expanded match (same reference as the previous slot).
+            if (i > 0 && match is { ExpandCount: > 1 } && ReferenceEquals(match, _matches[i - 1]))
+            {
+                continue;
+            }
+
             if (match == null)
             {
                 var buttonNotFound = UiUtil.MakeButton(string.Empty)

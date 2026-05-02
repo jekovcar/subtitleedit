@@ -13,6 +13,11 @@ public class NOcrDb
 
     private const string Version = "V2";
 
+    // An expanded match with too few lines matches almost anything of similar dimensions, so
+    // skip it. (Reject the trivial 0-lines case that would let any expanded char with the right
+    // dimensions win against a real single-letter match.)
+    private const int MinLinesForExpandedMatch = 1;
+
     public NOcrDb(string fileName)
     {
         FileName = fileName;
@@ -153,68 +158,14 @@ public class NOcrDb
         for (var i = 0; i < OcrCharactersExpanded.Count; i++)
         {
             var oc = OcrCharactersExpanded[i];
-            if (oc.ExpandCount > 1 && oc.Width > w && targetItem.X + oc.Width < nikseBitmap.Width)
+            if (oc.ExpandCount > 1 && oc.Width > w && targetItem.X + oc.Width < nikseBitmap.Width &&
+                oc.LinesForeground.Count + oc.LinesBackground.Count >= MinLinesForExpandedMatch &&
+                IsExpandedLineMatch(oc, targetItem, nikseBitmap, scaled: false))
             {
-                var ok = true;
-                var index = 0;
-                while (index < oc.LinesForeground.Count && ok)
+                var size = GetTotalSize(listIndex, list, oc.ExpandCount);
+                if (Math.Abs(size.X - oc.Width) < 3 && Math.Abs(size.Y - oc.Height) < 3)
                 {
-                    var op = oc.LinesForeground[index];
-                    foreach (var point in op.GetPoints())
-                    {
-                        var p = new OcrPoint(point.X + targetItem.X, point.Y + targetItem.Y - oc.MarginTop);
-                        if (p.X >= 0 && p.Y >= 0 && p.X < nikseBitmap.Width && p.Y < nikseBitmap.Height)
-                        {
-                            var a = nikseBitmap.GetAlpha(p.X, p.Y);
-                            if (a <= 150)
-                            {
-                                ok = false;
-                                break;
-                            }
-                        }
-                        else if (p.X >= 0 && p.Y >= 0)
-                        {
-                            ok = false;
-                            break;
-                        }
-                    }
-
-                    index++;
-                }
-
-                index = 0;
-                while (index < oc.LinesBackground.Count && ok)
-                {
-                    var op = oc.LinesBackground[index];
-                    foreach (var point in op.GetPoints())
-                    {
-                        var p = new OcrPoint(point.X + targetItem.X, point.Y + targetItem.Y - oc.MarginTop);
-                        if (p.X >= 0 && p.Y >= 0 && p.X < nikseBitmap.Width && p.Y < nikseBitmap.Height)
-                        {
-                            var a = nikseBitmap.GetAlpha(p.X, p.Y);
-                            if (a > 150)
-                            {
-                                ok = false;
-                                break;
-                            }
-                        }
-                        else if (p.X >= 0 && p.Y >= 0)
-                        {
-                            ok = false;
-                            break;
-                        }
-                    }
-
-                    index++;
-                }
-
-                if (ok)
-                {
-                    var size = GetTotalSize(listIndex, list, oc.ExpandCount);
-                    if (Math.Abs(size.X - oc.Width) < 3 && Math.Abs(size.Y - oc.Height) < 3)
-                    {
-                        return oc;
-                    }
+                    return oc;
                 }
             }
         }
@@ -222,75 +173,69 @@ public class NOcrDb
         for (var i = 0; i < OcrCharactersExpanded.Count; i++)
         {
             var oc = OcrCharactersExpanded[i];
-            if (oc.ExpandCount > 1 && oc.Width > w && targetItem.X + oc.Width < nikseBitmap.Width)
+            if (oc.ExpandCount > 1 && oc.Width > w && targetItem.X + oc.Width < nikseBitmap.Width &&
+                oc.LinesForeground.Count + oc.LinesBackground.Count >= MinLinesForExpandedMatch &&
+                IsExpandedLineMatch(oc, targetItem, nikseBitmap, scaled: true))
             {
-                var ok = true;
-                var index = 0;
-                while (index < oc.LinesForeground.Count && ok)
+                var size = GetTotalSize(listIndex, list, oc.ExpandCount);
+                var widthPercent = size.Y * 100.0 / size.X;
+                if (Math.Abs(widthPercent - oc.WidthPercent) < 15 &&
+                    Math.Abs(size.X - oc.Width) < 25 && Math.Abs(size.Y - oc.Height) < 20)
                 {
-                    var op = oc.LinesForeground[index];
-                    foreach (var point in op.ScaledGetPoints(oc, oc.Width, oc.Height - 1))
-                    {
-                        var p = new OcrPoint(point.X + targetItem.X, point.Y + targetItem.Y - oc.MarginTop);
-                        if (p.X >= 0 && p.Y >= 0 && p.X < nikseBitmap.Width && p.Y < nikseBitmap.Height)
-                        {
-                            var a = nikseBitmap.GetAlpha(p.X, p.Y);
-                            if (a <= 150)
-                            {
-                                ok = false;
-                                break;
-                            }
-                        }
-                        else if (p.X >= 0 && p.Y >= 0)
-                        {
-                            ok = false;
-                            break;
-                        }
-                    }
-
-                    index++;
-                }
-
-                index = 0;
-                while (index < oc.LinesBackground.Count && ok)
-                {
-                    var op = oc.LinesBackground[index];
-                    foreach (var point in op.ScaledGetPoints(oc, oc.Width, oc.Height - 1))
-                    {
-                        var p = new OcrPoint(point.X + targetItem.X, point.Y + targetItem.Y - oc.MarginTop);
-                        if (p.X >= 0 && p.Y >= 0 && p.X < nikseBitmap.Width && p.Y < nikseBitmap.Height)
-                        {
-                            var a = nikseBitmap.GetAlpha(p.X, p.Y);
-                            if (a > 150)
-                            {
-                                ok = false;
-                                break;
-                            }
-                        }
-                        else if (p.X >= 0 && p.Y >= 0)
-                        {
-                            ok = false;
-                            break;
-                        }
-                    }
-
-                    index++;
-                }
-
-                if (ok)
-                {
-                    var size = GetTotalSize(listIndex, list, oc.ExpandCount);
-                    var widthPercent = size.Y * 100.0 / size.X;
-                    if (Math.Abs(widthPercent - oc.WidthPercent) < 15 &&
-                        Math.Abs(size.X - oc.Width) < 25 && Math.Abs(size.Y - oc.Height) < 20)
-                    {
-                        return oc;
-                    }
+                    return oc;
                 }
             }
         }
 
         return null;
+    }
+
+    private static bool IsExpandedLineMatch(NOcrChar oc, ImageSplitterItem2 targetItem, NikseBitmap2 nikseBitmap, bool scaled)
+    {
+        foreach (var op in oc.LinesForeground)
+        {
+            var points = scaled ? op.ScaledGetPoints(oc, oc.Width, oc.Height - 1) : op.GetPoints();
+            foreach (var point in points)
+            {
+                var p = new OcrPoint(point.X + targetItem.X, point.Y + targetItem.Y - oc.MarginTop);
+                // A foreground line point that falls outside the parent bitmap can't possibly be
+                // on text — reject the match. (Previously negative Y was silently skipped, which
+                // let large-MarginTop expanded chars match by leaving the upper part of every
+                // line unchecked.)
+                if (p.X < 0 || p.Y < 0 || p.X >= nikseBitmap.Width || p.Y >= nikseBitmap.Height)
+                {
+                    return false;
+                }
+
+                if (nikseBitmap.GetAlpha(p.X, p.Y) <= 150)
+                {
+                    return false;
+                }
+            }
+        }
+
+        foreach (var op in oc.LinesBackground)
+        {
+            var points = scaled ? op.ScaledGetPoints(oc, oc.Width, oc.Height - 1) : op.GetPoints();
+            foreach (var point in points)
+            {
+                var p = new OcrPoint(point.X + targetItem.X, point.Y + targetItem.Y - oc.MarginTop);
+                // For background lines, points that fall outside the bitmap are definitionally
+                // "not on text", so they pass; only in-bounds points that turn out to be on text
+                // (alpha > 150) cause a failure.
+                if (p.X < 0 || p.Y < 0 || p.X >= nikseBitmap.Width || p.Y >= nikseBitmap.Height)
+                {
+                    continue;
+                }
+
+                if (nikseBitmap.GetAlpha(p.X, p.Y) > 150)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     private static OcrPoint GetTotalSize(int listIndex, List<ImageSplitterItem2> items, int count)
@@ -344,6 +289,14 @@ public class NOcrDb
             return null;
         }
 
+        // A perfect single match (exact size, 0 errors) means the user has explicitly added an
+        // entry for this bitmap, so prefer it over a possibly-greedy expanded match.
+        var exactSingle = GetExactMatchSingle(item.NikseBitmap, topMargin);
+        if (exactSingle != null)
+        {
+            return exactSingle;
+        }
+
         var expandedResult = GetMatchExpanded(parentBitmap, item, list.IndexOf(item), list);
         if (expandedResult != null)
         {
@@ -353,9 +306,8 @@ public class NOcrDb
         return GetMatchSingle(item.NikseBitmap, topMargin, deepSeek, maxWrongPixels);
     }
 
-    public NOcrChar? GetMatchSingle(NikseBitmap2 bitmap, int topMargin, bool deepSeek, int maxWrongPixels)
+    private NOcrChar? GetExactMatchSingle(NikseBitmap2 bitmap, int topMargin)
     {
-        // only very very accurate matches
         foreach (var oc in OcrCharacters)
         {
             if (bitmap.Width == oc.Width && bitmap.Height == oc.Height && Math.Abs(oc.MarginTop - topMargin) < 5)
@@ -365,6 +317,18 @@ public class NOcrDb
                     return oc;
                 }
             }
+        }
+
+        return null;
+    }
+
+    public NOcrChar? GetMatchSingle(NikseBitmap2 bitmap, int topMargin, bool deepSeek, int maxWrongPixels)
+    {
+        // only very very accurate matches
+        var exact = GetExactMatchSingle(bitmap, topMargin);
+        if (exact != null)
+        {
+            return exact;
         }
 
         // only very accurate matches

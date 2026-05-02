@@ -738,19 +738,33 @@ public partial class OcrViewModel : ObservableObject
         nBmp.CropTop(0, new SKColor(0, 0, 0, 0));
         var letters =
             NikseBitmapImageSplitter2.SplitBitmapToLettersNew(nBmp, SelectedNOcrPixelsAreSpace, false, true, 20, true);
-        var matches = new List<NOcrChar?>();
-        foreach (var splitterItem in letters)
+        var matches = new List<NOcrChar?>(new NOcrChar?[letters.Count]);
+        var idx = 0;
+        while (idx < letters.Count)
         {
+            var splitterItem = letters[idx];
             if (splitterItem.NikseBitmap == null)
             {
-                var match = new NOcrChar { Text = splitterItem.SpecialCharacter ?? string.Empty };
-                matches.Add(match);
+                matches[idx] = new NOcrChar { Text = splitterItem.SpecialCharacter ?? string.Empty };
+                idx++;
+                continue;
+            }
+
+            var match = _nOcrDb!.GetMatch(nBmp, letters, splitterItem, splitterItem.Top, true,
+                SelectedNOcrMaxWrongPixels);
+            matches[idx] = match;
+
+            if (match is { ExpandCount: > 1 })
+            {
+                for (var j = 1; j < match.ExpandCount && idx + j < matches.Count; j++)
+                {
+                    matches[idx + j] = match;
+                }
+                idx += match.ExpandCount;
             }
             else
             {
-                var match = _nOcrDb!.GetMatch(nBmp, letters, splitterItem, splitterItem.Top, true,
-                    SelectedNOcrMaxWrongPixels);
-                matches.Add(match);
+                idx++;
             }
         }
 

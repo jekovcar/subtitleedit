@@ -327,9 +327,49 @@ public partial class NOcrCharacterAddViewModel : ObservableObject
 
         NOcrChar.Text = NewText;
         NOcrChar.Italic = IsNewTextItalic;
+        SyncCanvasLinesToNOcrChar();
         OkPressed = true;
         SaveSettings();
         Close();
+    }
+
+    private void SyncCanvasLinesToNOcrChar()
+    {
+        if (PreviewBitmap == null)
+        {
+            return;
+        }
+
+        var bitmapWidth = PreviewBitmap.Width;
+        var bitmapHeight = PreviewBitmap.Height;
+        if (bitmapWidth <= 0 || bitmapHeight <= 0)
+        {
+            return;
+        }
+
+        NOcrChar.LinesForeground.Clear();
+        foreach (var line in NOcrDrawingCanvas.HitPaths)
+        {
+            NOcrChar.LinesForeground.Add(new NOcrLine(
+                new OcrPoint(
+                    (int)Math.Round(line.Start.X * NOcrChar.Width / (double)bitmapWidth, MidpointRounding.AwayFromZero),
+                    (int)Math.Round(line.Start.Y * NOcrChar.Height / (double)bitmapHeight, MidpointRounding.AwayFromZero)),
+                new OcrPoint(
+                    (int)Math.Round(line.End.X * NOcrChar.Width / (double)bitmapWidth, MidpointRounding.AwayFromZero),
+                    (int)Math.Round(line.End.Y * NOcrChar.Height / (double)bitmapHeight, MidpointRounding.AwayFromZero))));
+        }
+
+        NOcrChar.LinesBackground.Clear();
+        foreach (var line in NOcrDrawingCanvas.MissPaths)
+        {
+            NOcrChar.LinesBackground.Add(new NOcrLine(
+                new OcrPoint(
+                    (int)Math.Round(line.Start.X * NOcrChar.Width / (double)bitmapWidth, MidpointRounding.AwayFromZero),
+                    (int)Math.Round(line.Start.Y * NOcrChar.Height / (double)bitmapHeight, MidpointRounding.AwayFromZero)),
+                new OcrPoint(
+                    (int)Math.Round(line.End.X * NOcrChar.Width / (double)bitmapWidth, MidpointRounding.AwayFromZero),
+                    (int)Math.Round(line.End.Y * NOcrChar.Height / (double)bitmapHeight, MidpointRounding.AwayFromZero))));
+        }
     }
 
     [RelayCommand]
